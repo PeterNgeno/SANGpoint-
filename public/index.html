@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KCSE Auto PDF</title>
+
+<!-- PDF Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<style>
+/* ================= PAGE SETUP ================= */
+@page {
+  size: A4;
+  margin: 25mm;
+}
+
+body {
+  margin: 0;
+  background: #f0f0f0;
+  font-family: Georgia, serif;
+}
+
+/* ================= MAGAZINE ================= */
+.magazine {
+  background: white;
+  max-width: 210mm;
+  margin: auto;
+  padding: 30px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ===== IMAGE WATERMARK ===== */
+.magazine::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url("peron.png");
+  background-repeat: repeat;
+  background-size: 180px;
+  opacity: 0.05;
+  transform: rotate(-25deg);
+  z-index: 0;
+}
+
+/* ===== TEXT WATERMARK ===== */
+.watermark-text {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-30deg);
+  font-size: 48px;
+  font-weight: bold;
+  color: rgba(0,0,0,0.08);
+  z-index: 0;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* ===== CONTENT ===== */
+.content {
+  position: relative;
+  z-index: 2;
+}
+
+/* ================= HEADER ================= */
+.header {
+  text-align: center;
+  border-bottom: 3px solid #000;
+  margin-bottom: 30px;
+  padding-bottom: 15px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 30px;
+}
+
+.header p {
+  margin: 5px 0 0;
+  font-size: 14px;
+  color: #444;
+}
+
+/* ================= QUESTIONS ================= */
+.question {
+  margin-bottom: 30px;
+  page-break-inside: avoid;
+}
+
+.question-number {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.question-text {
+  margin: 10px 0;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* ================= DIAGRAM ================= */
+.diagram {
+  margin: 15px 0;
+  text-align: center;
+}
+
+.diagram img {
+  max-width: 100%;
+  border: 1px solid #ccc;
+  padding: 5px;
+}
+
+/* ================= FOOTER ================= */
+.footer {
+  margin-top: 40px;
+  text-align: center;
+  font-size: 12px;
+  color: #666;
+  border-top: 1px solid #ccc;
+  padding-top: 10px;
+}
+
+@media print {
+  body {
+    background: white;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="magazine">
+
+  <div class="watermark-text">www.perontips.co.ke</div>
+
+  <div class="content">
+    <div class="header">
+      <h1>KCSE Past Examination</h1>
+      <p>Official Revision Material</p>
+    </div>
+
+    <div id="questions"></div>
+
+    <div class="footer">
+      © www.perontips.co.ke — Unauthorized distribution prohibited
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ================= CONFIG ================= */
+
+const SHEET_ID = "1X8XY51OIVpMX5BMsnnsEpuuYsdvRsnSxbmWFbidbTBs";
+
+/* ADD ALL SHEETS HERE */
+const SHEETS = [
+  "Sheet1",
+  "Sheet3",
+  "Sheet4"
+];
+
+/* ================= FUNCTIONS ================= */
+
+async function loadSheet(sheetName) {
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${sheetName}`;
+  const response = await fetch(url);
+  const csv = await response.text();
+
+  const rows = csv.split("\n").slice(1);
+  const container = document.getElementById("questions");
+  container.innerHTML = "";
+
+  rows.forEach((row, index) => {
+    const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+    const question = cols[0]?.replace(/"/g, "").trim();
+    const image = cols[1]?.replace(/"/g, "").trim();
+
+    if (!question) return;
+
+    const div = document.createElement("div");
+    div.className = "question";
+    div.innerHTML = `
+      <div class="question-number">Question ${index + 1}</div>
+      <div class="question-text">${question}</div>
+      ${image ? `<div class="diagram"><img src="${image}"></div>` : ""}
+    `;
+    container.appendChild(div);
+  });
+}
+
+async function generatePDF(sheetName) {
+  document.title = sheetName;
+
+  await html2pdf()
+    .set({
+      margin: 10,
+      filename: `${sheetName}.pdf`,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
+    })
+    .from(document.querySelector(".magazine"))
+    .save();
+}
+
+async function generateAllPDFs() {
+  for (const sheet of SHEETS) {
+    await loadSheet(sheet);
+    await new Promise(r => setTimeout(r, 1500));
+    await generatePDF(sheet);
+    await new Promise(r => setTimeout(r, 2000));
+  }
+}
+
+/* ================= START ================= */
+window.onload = generateAllPDFs;
+</script>
+
+</body>
+  </html>
